@@ -57,20 +57,12 @@ class BooksApp extends React.Component {
       if(searchResults.error){
         this.setState({errorOnSearch: true, searchResults: null})
       }else{
+        let allBooksOnShelves = [...this.state.currentlyReadingShelf, ...this.state.wantToReadShelf, ...this.state.readShelf];
+
         searchResults = searchResults.map(searchResult => {
-          this.state.currentlyReadingShelf.forEach(ele => {
+          allBooksOnShelves.forEach(ele => {
             if(ele.title === searchResult.title){
-              searchResult.shelf = "currentlyReading";
-            }
-          });
-          this.state.wantToReadShelf.forEach(ele => {
-            if(ele.title === searchResult.title){
-              searchResult.shelf = "wantToRead";
-            }
-          });
-          this.state.readShelf.forEach(ele => {
-            if(ele.title === searchResult.title){
-              searchResult.shelf = "read";
+              searchResult.shelf = ele.shelf;
             }
           });
           return searchResult
