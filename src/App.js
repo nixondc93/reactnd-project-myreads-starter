@@ -3,6 +3,8 @@ import * as BooksAPI from './BooksAPI'
 import Shelf from './Shelf';
 import SearchPage from './SearchPage';
 import './App.css'
+import { BrowserRouter as Router, Route, Link } from "react-router-dom";
+
 
 class BooksApp extends React.Component {
   state = {
@@ -12,13 +14,15 @@ class BooksApp extends React.Component {
      * users can use the browser's back and forward buttons to navigate between
      * pages, as well as provide a good URL they can bookmark and share.
      */
+    errorOnSearch: false,
+    searchResults: null,
     currentlyReadingShelf: null,
     wantToReadShelf: null,
     readShelf: null,
-    showSearchPage: false
+    showSearchPage: true
   }
 
-  componentDidMount(){
+  getBooks(){
     let currentlyReadingShelf = [], wantToReadShelf = [], readShelf = []; 
     BooksAPI.getAll().then((books) => {
       books.forEach(book => {
@@ -39,36 +43,87 @@ class BooksApp extends React.Component {
     });
   }
 
-  onsearch(){
-
+  componentDidMount(){
+    this.getBooks();
   }
 
-  changeShelf(shelf, book){
+  onSearch = (query) => {
+    query = query.trim();
+    this.setState({searchResults: null})
 
+    if(!query){
+      return;
+    }
+
+    BooksAPI.search(query).then((searchResults, errorOnSearch) => {
+      if(errorOnSearch){
+        console.log('error');
+        this.setState({errorOnSearch: true, searchResults: null});
+      }
+      if(searchResults.error){
+        this.setState({errorOnSearch: true, searchResults: null})
+      }else{
+        searchResults = searchResults.map(searchResult => {
+          this.state.currentlyReadingShelf.forEach(ele => {
+            if(ele.title === searchResult.title){
+              searchResult.shelf = "currentlyReading";
+            }
+          });
+          this.state.wantToReadShelf.forEach(ele => {
+            if(ele.title === searchResult.title){
+              searchResult.shelf = "wantToRead";
+            }
+          });
+          this.state.readShelf.forEach(ele => {
+            if(ele.title === searchResult.title){
+              searchResult.shelf = "read";
+            }
+          });
+          return searchResult
+        });
+        console.log(searchResults);
+        this.setState({searchResults, errorOnSearch: false});
+      }
+    });
+  }
+
+  changeShelf = (book, shelf) => {
+    BooksAPI.update(book, shelf).then((resBook) => this.getBooks());
   }
 
   render() {
+
     return (
       <div className="app">
-        {this.state.showSearchPage ? (
-          <SearchPage/>
-        ) : (
+        <Route  path='/search' render={() => 
+          <SearchPage 
+            changeShelf={this.changeShelf} 
+            onSearch={this.onSearch} 
+            searchResults={this.state.searchResults} 
+            errorOnSearch={this.state.errorOnSearch}
+          />}
+        />
+          
+
+        <Route exact path='/' render={() => 
           <div className="list-books">
             <div className="list-books-title">
               <h1>MyReads</h1>
             </div>
             <div className="list-books-content">
               <div>
-                <Shelf books={this.state.currentlyReadingShelf}/>
-                <Shelf books={this.state.wantToReadShelf}/>
-                <Shelf books={this.state.readShelf}/>
+                <Shelf changeShelf={this.changeShelf} shelf={"Currently Reading"}  books={this.state.currentlyReadingShelf}/>
+                <Shelf changeShelf={this.changeShelf} shelf={"Want to Read"} books={this.state.wantToReadShelf}/>
+                <Shelf changeShelf={this.changeShelf} shelf={"Read"} books={this.state.readShelf}/>
               </div>
             </div>
             <div className="open-search">
-              <a onClick={() => this.setState({ showSearchPage: true })}>Add a book</a>
+              <Link to="/search">Add a book</Link>
             </div>
           </div>
-        )}
+        }/>
+
+
       </div>
     )
   }
